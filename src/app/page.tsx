@@ -1,101 +1,197 @@
-import Image from "next/image";
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+
+import { useState, useRef, useEffect } from 'react';
+
+import { ElevenLabsClient } from 'elevenlabs';
+
+const API_KEY = process.env.ELEVENLABS_API_key!;
+const LEFT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
+const RIGHT_VOICE_ID = 'FGY2WhTYpPnrIDTdsKH5';
+
+const elevenlabs = new ElevenLabsClient({
+	apiKey: API_KEY,
+});
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+	const [messages, setMessages] = useState([
+		{
+			id: 1,
+			type: 'left',
+			text: 'Hello, how can I help you today?',
+			audioUrl: null,
+			audioLength: 0,
+		},
+		{
+			id: 2,
+			type: 'right',
+			text: 'I have a question about your product.',
+			audioUrl: null,
+			audioLength: 0,
+		},
+	]);
+	const [inputText, setInputText] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+	const [isProcessing, setIsProcessing] = useState(false);
+	const [isPlaying, setIsPlaying] = useState(false);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const audioRef = useRef<HTMLAudioElement>(null);
+
+	useEffect(() => {
+		if (textareaRef.current) {
+			textareaRef.current.value = messages.map((msg) => msg.text).join('\n');
+		}
+	}, [messages]);
+
+	const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const newText = e.target.value;
+		setInputText(newText);
+
+		const newMessages = newText.split('\n').map((text, index) => ({
+			id: index + 1,
+			type: index % 2 === 0 ? 'left' : 'right',
+			text: text.trim(),
+			audioUrl: null,
+			audioLength: 0,
+		}));
+
+		setMessages(newMessages);
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			const newMessages = inputText.split('\n').map((text, index) => ({
+				id: messages.length + index + 1,
+				type: (messages.length + index) % 2 === 0 ? 'left' : 'right',
+				text: text.trim(),
+				audioUrl: null,
+				audioLength: 0,
+			}));
+
+			setMessages([...messages, ...newMessages]);
+			setInputText('');
+		}
+	};
+
+	const processConversation = async () => {
+		setIsProcessing(true);
+		const updatedMessages = [...messages];
+
+		for (let i = 0; i < updatedMessages.length; i++) {
+			const message = updatedMessages[i];
+			if (!message.audioUrl) {
+				const voiceId =
+					message.type === 'left' ? LEFT_VOICE_ID : RIGHT_VOICE_ID;
+
+				try {
+					const audio = await elevenlabs.generate({
+						voice: voiceId,
+						text: message.text,
+						model_id: 'eleven_multilingual_v2',
+					});
+
+					const chunks = [];
+					for await (const chunk of audio) {
+						chunks.push(chunk);
+					}
+					const arrayBuffer = Buffer.concat(chunks);
+					const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+					const audioUrl = URL.createObjectURL(blob);
+					const audioLength = await getAudioDuration(audioUrl);
+
+					updatedMessages[i] = {
+						...message,
+						audioUrl: audioUrl as unknown as null,
+						audioLength,
+					};
+				} catch (error) {
+					console.error('Error generating audio:', error);
+				}
+			}
+		}
+
+		setMessages(updatedMessages);
+		setIsProcessing(false);
+	};
+	const getAudioDuration = (url: string): Promise<number> => {
+		return new Promise((resolve) => {
+			const audio = new Audio(url);
+			audio.addEventListener('loadedmetadata', () => {
+				resolve(audio.duration);
+			});
+		});
+	};
+
+	const playAudio = async () => {
+		setIsPlaying(true);
+		for (const message of messages) {
+			if (message.audioUrl) {
+				await new Promise<void>((resolve) => {
+					if (message.audioUrl) {
+						const audio = new Audio(message.audioUrl);
+						audio.onended = () => resolve();
+						audio.play().catch((error) => {
+							console.error('Error playing audio:', error);
+							resolve();
+						});
+					} else {
+						resolve();
+					}
+				});
+			}
+		}
+		setIsPlaying(false);
+	};
+
+	const getTotalAudioLength = () => {
+		return messages
+			.reduce((total, message) => total + message.audioLength, 0)
+			.toFixed(2);
+	};
+
+	return (
+		<main className='flex justify-center'>
+			<div className='container flex justify-center'>
+				<div className='w-1/2 h-screen flex justify-center items-center flex-col gap-4'>
+					<h1 className='text-4xl font-extrabold'>Elevenlabs Demo</h1>
+					<Textarea
+						ref={textareaRef}
+						className='h-1/4'
+						placeholder='Type the conversation here, it will switch between left and right voice'
+						value={inputText}
+						onChange={handleTextareaChange}
+						onKeyDown={handleKeyDown}
+					/>
+					<div className='flex gap-4'>
+						<Button
+							variant='secondary'
+							onClick={processConversation}
+							disabled={isProcessing}>
+							{isProcessing ? 'Processing...' : 'Process Conversation'}
+						</Button>
+						<Button
+							variant='destructive'
+							onClick={playAudio}
+							disabled={isPlaying || messages.some((m) => !m.audioUrl)}>
+							{isPlaying ? 'Playing...' : 'Play the audio'}
+						</Button>
+					</div>
+
+					<p>Total audio duration: {getTotalAudioLength()} seconds</p>
+					<div>
+						{messages.map((message, index) => (
+							<p key={message.id}>
+								Message {index + 1} duration: {message.audioLength.toFixed(2)}{' '}
+								seconds
+							</p>
+						))}
+					</div>
+					<audio ref={audioRef} style={{ display: 'none' }} />
+				</div>
+			</div>
+		</main>
+	);
 }
