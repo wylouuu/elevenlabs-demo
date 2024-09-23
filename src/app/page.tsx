@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 
 import { ElevenLabsClient } from 'elevenlabs';
 
-const API_KEY = process.env.ELEVENLABS_API_key!;
+const API_KEY = 'sk_2568ea193180771362ba0586ba30882e384271189d4bd703';
 const LEFT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
 const RIGHT_VOICE_ID = 'FGY2WhTYpPnrIDTdsKH5';
 
